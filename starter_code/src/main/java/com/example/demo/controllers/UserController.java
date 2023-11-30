@@ -52,8 +52,10 @@ public class UserController {
 	public ResponseEntity<User> createUser(@RequestBody CreateUserRequest createUserRequest) {
 		User user = new User();
 		user.setUsername(createUserRequest.getUsername());
+		log.info("Username set with ", createUserRequest.getUsername());
 		Cart cart = new Cart();
 		cartRepository.save(cart);
+
 		user.setCart(cart);
 		if(createUserRequest.getPassword().length() < 7 ||
 				!createUserRequest.getPassword().equals(createUserRequest.getConfirmPassword())){
@@ -61,6 +63,7 @@ public class UserController {
 				return ResponseEntity.badRequest().build();
 		}
 
+		/* Salt method
 		// generate a random salt
 		SecureRandom random = new SecureRandom();
 		byte[] salt = new byte[16];
@@ -71,7 +74,8 @@ public class UserController {
 		String saltedPassword = createUserRequest.getPassword() + encodedSalt;
 		user.setPassword(bCryptPasswordEncoder.encode(saltedPassword));
 		user.setSalt(encodedSalt);
-
+		*/
+		user.setPassword(bCryptPasswordEncoder.encode(createUserRequest.getPassword()));
 		userRepository.save(user);
 		return ResponseEntity.ok(user);
 	}
