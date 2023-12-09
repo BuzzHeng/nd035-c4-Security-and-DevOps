@@ -17,11 +17,15 @@ import com.example.demo.model.persistence.repositories.CartRepository;
 import com.example.demo.model.persistence.repositories.OrderRepository;
 import com.example.demo.model.persistence.repositories.UserRepository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/api/order")
 public class OrderController {
-	
-	
+
+	private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
+
 	@Autowired
 	private UserRepository userRepository;
 	
@@ -32,11 +36,19 @@ public class OrderController {
 	@PostMapping("/submit/{username}")
 	public ResponseEntity<UserOrder> submit(@PathVariable String username) {
 		User user = userRepository.findByUsername(username);
+		//Username does not exist
 		if(user == null) {
+			logger.error("ORDER_REQUEST_FAILURE: Username does not exist for " + username);
 			return ResponseEntity.notFound().build();
 		}
+		//Cart empty
 		UserOrder order = UserOrder.createFromCart(user.getCart());
+		if (order == null){
+			logger.error("ORDER_REQUEST_FAILURE: Cart is empty");
+			return ResponseEntity.badRequest().build();
+		}
 		orderRepository.save(order);
+		logger.info("ORDER_REQUEST_SUCCESS: Order submitted successfully for " + username);
 		return ResponseEntity.ok(order);
 	}
 	

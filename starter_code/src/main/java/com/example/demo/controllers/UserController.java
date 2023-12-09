@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
-	private static final Logger log = LoggerFactory.getLogger(UserController.class);
+	private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 	@Autowired
 	private UserRepository userRepository;
 	
@@ -45,25 +45,43 @@ public class UserController {
 	@GetMapping("/{username}")
 	public ResponseEntity<User> findByUserName(@PathVariable String username) {
 		User user = userRepository.findByUsername(username);
-		return user == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(user);
+		if (user == null) {
+			logger.error("Exception: User not found");
+			return ResponseEntity.notFound().build();
+		} else {
+			return ResponseEntity.ok(user);
+		}
 	}
 	
 	@PostMapping("/create")
 	public ResponseEntity<User> createUser(@RequestBody CreateUserRequest createUserRequest) {
-		User user = new User();
-		user.setUsername(createUserRequest.getUsername());
-		log.info("Username set with ", createUserRequest.getUsername());
-		Cart cart = new Cart();
-		cartRepository.save(cart);
 
-		user.setCart(cart);
-		if(createUserRequest.getPassword().length() < 7 ||
-				!createUserRequest.getPassword().equals(createUserRequest.getConfirmPassword())){
-				log.error("Error with user password. Cannot create User {}", createUserRequest.getUsername());
-				return ResponseEntity.badRequest().build();
+		//User already exist Exception
+		if (userRepository.findByUsername(createUserRequest.getUsername()) != null) {
+			logger.error("Exception: User already exist");
+			return ResponseEntity.notFound().build();
+		}
+		// Check if the password is at least 7 characters long
+		if(createUserRequest.getPassword().length() < 7){
+			logger.error("CREATE_USER_FAILURE: Password less than 7 characters.");
+			return ResponseEntity.badRequest().build();
 		}
 
-		/* Salt method
+		// Check if the password matches the confirmation password
+		if(!createUserRequest.getPassword().equals(createUserRequest.getConfirmPassword())){
+			logger.error("CREATE_USER_FAILURE: Password and confirmation password do not match.");
+			return ResponseEntity.badRequest().build();
+		}
+
+		User user = new User();
+		user.setUsername(createUserRequest.getUsername());
+		Cart cart = new Cart();
+		cartRepository.save(cart);
+		user.setCart(cart);
+
+
+
+		/*
 		// generate a random salt
 		SecureRandom random = new SecureRandom();
 		byte[] salt = new byte[16];
@@ -75,9 +93,10 @@ public class UserController {
 		user.setPassword(bCryptPasswordEncoder.encode(saltedPassword));
 		user.setSalt(encodedSalt);
 		*/
-		user.setPassword(bCryptPasswordEncoder.encode(createUserRequest.getPassword()));
+		String password = bCryptPasswordEncoder.encode(createUserRequest.getPassword());
+		user.setPassword(password);
 		userRepository.save(user);
+		logger.info("CREATE_USER_SUCCESS : " + createUserRequest.getUsername());
 		return ResponseEntity.ok(user);
 	}
-	
 }
